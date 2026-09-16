@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mercenary Company Manager — Build Launcher</title>
+<style>
+:root{--bg:#0e1012;--panel:#171a1e;--panel2:#1d2126;--line:#30363d;--text:#eceff2;--muted:#9ca6b1;--accent:#d6b06a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:900px;margin:auto;padding:28px 18px 60px}.hero{margin-bottom:26px}h1{margin:0 0 8px;font-size:clamp(28px,5vw,44px)}
+h2,h3{margin-top:0}.muted{color:var(--muted)}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+.latest{border-color:#6d5933}.row{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.badge{display:inline-block;border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:4px 8px;font-size:12px}
+.btn{display:inline-block;text-decoration:none;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 13px;margin-top:10px}
+.btn.primary{background:#3a3020;border-color:#7a6236;color:#f6dfb4;font-weight:700}code{color:#e6c98f;background:#121417;border:1px solid #292e34;border-radius:5px;padding:2px 5px}
+.footer{margin-top:28px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media(max-width:600px){main{padding:20px 12px 50px}.btn{width:100%;text-align:center}}
+</style>
+</head>
+<body>
+<main>
+<section class="hero">
+  <span class="badge">GitHub Pages Build Launcher</span>
+  <h1>Mercenary Company Manager</h1>
+  <p class="muted">Launch the current playtest build or open an earlier iteration.</p>
+</section>
+
+<section class="card latest">
+  <div class="row">
+    <div>
+      <span class="badge">LATEST</span>
+      <h2 style="margin-top:10px">Playable Base v0.1.1</h2>
+      <p class="muted">Instrumented support build with diagnostics and regression coverage.</p>
+    </div>
+    <span class="badge">Offline-capable</span>
+  </div>
+  <a class="btn primary" href="./Playable_Base_v0.1.1_Offline.html">Launch Playable Base v0.1.1</a>
+</section>
+
+<section>
+  <h2>Previous Iterations</h2>
+  <div class="card">
+    <div class="row">
+      <div>
+        <h3>Playable Base v0.1</h3>
+        <p class="muted">First self-contained offline vertical slice.</p>
+      </div>
+      <span class="badge">Baseline</span>
+    </div>
+    <a class="btn" href="./Playable_Base_v0.1_Offline.html">Launch v0.1</a>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Adding the next iteration</h2>
+  <ol>
+    <li>Upload the next build to this same repository.</li>
+    <li>Use a versioned filename such as <code>Playable_Base_v0.1.2_Offline.html</code>.</li>
+    <li>Change the Latest button in this file to the new filename.</li>
+    <li>Move the former latest build into Previous Iterations.</li>
+    <li>Commit the changes and let GitHub Pages redeploy.</li>
+  </ol>
+</section>
+
+<section class="card">
+  <h2>Recommended repository layout</h2>
+  <pre style="white-space:pre-wrap;color:#c7ced6;margin:0">/
+├── index.html
+├── Playable_Base_v0.1_Offline.html
+├── Playable_Base_v0.1.1_Offline.html
+└── future iterations...</pre>
+</section>
+
+<div class="footer">All links are relative, so this works with GitHub Pages project repositories.</div>
+</main>
+</body>
+</html>

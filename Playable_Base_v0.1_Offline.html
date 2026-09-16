@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mercenary Company Manager — Playable Base v0.1</title>
+<style>
+:root{--bg:#0e1012;--panel:#171a1e;--panel2:#1d2126;--line:#30363d;--text:#eceff2;--muted:#9ca6b1;--accent:#d6b06a;--good:#7bbf85;--warn:#d1a85c;--bad:#d27575;--blue:#7fa9d6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,select,input{font:inherit}.app{max-width:1100px;margin:auto;min-height:100vh}
+header{position:sticky;top:0;z-index:20;background:rgba(14,16,18,.96);border-bottom:1px solid var(--line);padding:12px 14px}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:center}.brand{font-weight:800;font-size:17px}.meta{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.badge{padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:12px}
+nav{display:flex;gap:6px;overflow:auto;padding-top:10px}nav button{white-space:nowrap;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:8px 10px;border-radius:9px}
+nav button.active{border-color:var(--accent);color:var(--accent)}
+main{padding:14px 14px 100px}.grid{display:grid;gap:12px}.grid2{grid-template-columns:1fr}.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px}
+.card h3,.card h4{margin:0 0 8px}.muted{color:var(--muted)}.small{font-size:12px}.tiny{font-size:11px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.wrap{flex-wrap:wrap}.stack{display:grid;gap:8px}
+.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:9px;padding:9px 11px;cursor:pointer}.btn:hover{border-color:#59626d}.btn.primary{background:#3a3020;border-color:#7a6236;color:#f6dfb4}.btn.good{border-color:#42694a}.btn.bad{border-color:#754646}.btn:disabled{opacity:.4;cursor:not-allowed}
+.stat{font-size:23px;font-weight:800}.label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}.divider{height:1px;background:var(--line);margin:10px 0}
+.job{border-left:4px solid var(--blue)}.job.selected{border-left-color:var(--accent)}.goodline{border-left:4px solid var(--good)}.warnline{border-left:4px solid var(--warn)}.badline{border-left:4px solid var(--bad)}
+.pills{display:flex;flex-wrap:wrap;gap:5px}.pill{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:3px 7px;color:#c7ced6}
+.skillgrid{display:grid;grid-template-columns:1fr 44px;gap:4px 10px}.skillgrid div:nth-child(even){text-align:right}.bar{height:5px;background:#2a2f35;border-radius:9px;overflow:hidden}.bar span{display:block;height:100%;background:#7f8995}
+input[type=checkbox],input[type=radio]{accent-color:#c8a763}.member{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #252a30}.member:last-child{border-bottom:0}
+select{background:#111418;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;max-width:100%}
+.coverage .ao{border-top:1px solid var(--line);padding:7px 0}.coverage .ao:first-child{border-top:0}
+.notice{padding:9px;border-radius:9px;background:#1e2227;border:1px solid var(--line)}.notice.warn{border-color:#725f36}.notice.bad{border-color:#704343}.notice.good{border-color:#3f6546}
+.report-event{border-left:2px solid #4d5660;padding-left:9px;margin:7px 0}.money.pos{color:var(--good)}.money.neg{color:var(--bad)}
+dialog{width:min(720px,94vw);max-height:88vh;overflow:auto;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:0}dialog::backdrop{background:#000b}.dlghead{position:sticky;top:0;background:var(--panel);padding:13px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;z-index:2}.dlgbody{padding:13px}
+footer{position:fixed;bottom:0;left:0;right:0;background:#101214;border-top:1px solid var(--line);padding:9px;z-index:30}.footerinner{max-width:1072px;margin:auto;display:flex;gap:8px}.footerinner .btn{flex:1}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:repeat(3,1fr)}main{padding-bottom:80px}.desktop2{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+ <div class="top"><div><div class="brand">Mercenary Company Manager</div><div class="small muted">Playable Base v0.1 · Offline Vertical Slice</div></div><div class="meta" id="topMeta"></div></div>
+ <nav id="nav"></nav>
+</header>
+<main id="view"></main>
+</div>
+<footer><div class="footerinner"><button class="btn" id="advanceBtn">Advance to next event</button><button class="btn primary" id="saveBtn">Save</button></div></footer>
+<dialog id="modal"><div class="dlghead"><b id="modalTitle"></b><button class="btn" onclick="modal.close()">Close</button></div><div class="dlgbody" id="modalBody"></div></dialog>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+<script>
+"use strict";
+const INITIAL_STATE={"version":"playable_base_v0_1","companyName":"The Free Company","day":1,"cash":3500,"payrollCycle":30,"nextPayrollDay":30,"nextOfferDay":8,"nextRecruitDay":21,"offerCounter":0,"recruitCounter":0,"jobSeed":137,"roster":[{"id":"actor_mara","name":"Mara Venn","careerStage":"Established","skills":{"Melee Combat":8,"Ranged Combat":3,"Navigation":6,"Tracking":4,"Stealth":4,"Survival":6,"Leadership":8,"Strategy":6,"Tactics":8,"Instruction":4,"Logistics":5,"Persuasion":5,"Negotiation":6,"Intimidation":5,"Deception":4,"Medicine":3,"Animal Handling":4,"Vehicle Handling":3,"Crafting":3,"Engineering":2,"Administration":4,"General Knowledge":5},"aptitudes":{"Intelligence":8,"Awareness":8,"Focus":8,"Resilience":8,"Endurance":8,"Strength":5,"Mobility":5,"Speed":5},"applications":{},"payroll":60,"readiness":"Ready","availableDay":1,"assignment":null,"injuries":[],"careerHistory":[],"dev":{},"appDev":{}},{"id":"actor_soren","name":"Soren Vale","careerStage":"Established","skills":{"Melee Combat":3,"Ranged Combat":8,"Navigation":8,"Tracking":8,"Stealth":6,"Survival":8,"Leadership":4,"Strategy":3,"Tactics":4,"Instruction":3,"Logistics":4,"Persuasion":3,"Negotiation":3,"Intimidation":2,"Deception":3,"Medicine":2,"Animal Handling":5,"Vehicle Handling":3,"Crafting":2,"Engineering":2,"Administration":2,"General Knowledge":4},"aptitudes":{"Awareness":9,"Focus":8,"Mobility":8,"Endurance":8,"Intelligence":5,"Resilience":5,"Strength":5,"Speed":5},"applications":{},"payroll":60,"readiness":"Ready","availableDay":1,"assignment":null,"injuries":[],"careerHistory":[],"dev":{},"appDev":{}},{"id":"actor_hale","name":"Tobin Hale","careerStage":"Veteran","skills":{"Melee Combat":4,"Ranged Combat":2,"Navigation":2,"Tracking":2,"Stealth":2,"Survival":4,"Leadership":6,"Strategy":2,"Tactics":2,"Instruction":2,"Logistics":2,"Persuasion":6,"Negotiation":2,"Intimidation":2,"Deception":2,"Medicine":9,"Animal Handling":2,"Vehicle Handling":2,"Crafting":2,"Engineering":2,"Administration":6,"General Knowledge":6},"aptitudes":{"Intelligence":8,"Awareness":5,"Focus":9,"Resilience":8,"Strength":5,"Endurance":5,"Mobility":5,"Speed":5},"applications":{"Swords":"Familiar","Structural Engineering":"Familiar"},"payroll":60,"readiness":"Ready","availableDay":1,"assignment":null,"injuries":[],"careerHistory":[],"dev":{},"appDev":{}},{"id":"actor_bren","name":"Bren Dorr","careerStage":"Developing","skills":{"Melee Combat":8,"Ranged Combat":2,"Navigation":2,"Tracking":2,"Stealth":2,"Survival":4,"Leadership":2,"Strategy":2,"Tactics":2,"Instruction":2,"Logistics":2,"Persuasion":2,"Negotiation":2,"Intimidation":6,"Deception":2,"Medicine":2,"Animal Handling":2,"Vehicle Handling":2,"Crafting":2,"Engineering":2,"Administration":2,"General Knowledge":3},"aptitudes":{"Intelligence":5,"Awareness":5,"Focus":5,"Resilience":8,"Strength":9,"Endurance":8,"Mobility":5,"Speed":3},"applications":{"Blunt Weapons":"Familiar"},"payroll":60,"readiness":"Ready","availableDay":1,"assignment":null,"injuries":[],"careerHistory":[],"dev":{},"appDev":{}},{"id":"actor_ilyra","name":"Ilyra Fen","careerStage":"Established","skills":{"Melee Combat":4,"Ranged Combat":2,"Navigation":4,"Tracking":3,"Stealth":3,"Survival":4,"Leadership":6,"Strategy":4,"Tactics":4,"Instruction":4,"Logistics":8,"Persuasion":6,"Negotiation":8,"Intimidation":2,"Deception":4,"Medicine":3,"Animal Handling":6,"Vehicle Handling":5,"Crafting":3,"Engineering":2,"Administration":8,"General Knowledge":6},"aptitudes":{"Intelligence":8,"Focus":8,"Endurance":5,"Awareness":6,"Resilience":5,"Strength":5,"Mobility":5,"Speed":5},"applications":{},"payroll":60,"readiness":"Ready","availableDay":1,"assignment":null,"injuries":[],"careerHistory":[],"dev":{},"appDev":{}},{"id":"actor_corin","name":"Corin Ash","careerStage":"Developing","skills":{"Melee Combat":2,"Ranged Combat":6,"Navigation":4,"Tracking":4,"Stealth":8,"Survival":2,"Leadership":2,"Strategy":2,"Tactics":2,"Instruction":2,"Logistics":2,"Persuasion":4,"Negotiation":2,"Intimidation":2,"Deception":8,"Medicine":2,"Animal Handling":2,"Vehicle Handling":2,"Crafting":2,"Engineering":2,"Administration":2,"General Knowledge":4},"aptitudes":{"Intelligence":5,"Awareness":8,"Focus":5,"Resilience":5,"Strength":5,"Endurance":5,"Mobility":8,"Speed":8},"applications":{"Crossbows":"Familiar","Security Systems":"Specialized"},"payroll":60,"readiness":"Ready","availableDay":1,"assignment":null,"injuries":[],"careerHistory":[],"dev":{},"appDev":{}},{"id":"actor_dain","name":"Dain Orrel","careerStage":"Established","skills":{"Melee Combat":6,"Ranged Combat":2,"Navigation":2,"Tracking":2,"Stealth":2,"Survival":2,"Leadership":2,"Strategy":2,"Tactics":2,"Instruction":2,"Logistics":4,"Persuasion":2,"Negotiation":2,"Intimidation":2,"Deception":2,"Medicine":2,"Animal Handling":2,"Vehicle Handling":2,"Crafting":6,"Engineering":6,"Administration":2,"General Knowledge":5},"aptitudes":{"Intelligence":8,"Awareness":5,"Focus":8,"Resilience":5,"Strength":8,"Endurance":5,"Mobility":5,"Speed":5},"applications":{"Axes":"Familiar","Structural Engineering":"Familiar","Security Systems":"Familiar"},"payroll":60,"readiness":"Ready","availableDay":1,"assignment":null,"injuries":[],"careerHistory":[],"dev":{},"appDev":{}},{"id":"actor_nessa","name":"Nessa Quill","careerStage":"Emerging","skills":{"Melee Combat":2,"Ranged Combat":6,"Navigation":4,"Tracking":5,"Stealth":2,"Survival":6,"Leadership":4,"Strategy":2,"Tactics":4,"Instruction":2,"Logistics":2,"Persuasion":2,"Negotiation":2,"Intimidation":2,"Deception":2,"Medicine":2,"Animal Handling":2,"Vehicle Handling":2,"Crafting":2,"Engineering":2,"Administration":2,"General Knowledge":2},"aptitudes":{"Intelligence":8,"Awareness":8,"Focus":5,"Resilience":5,"Strength":5,"Endurance":5,"Mobility":8,"Speed":8},"applications":{"Bows":"Familiar","Human Tracking":"Familiar"},"payroll":60,"readiness":"Ready","availableDay":1,"assignment":null,"injuries":[],"careerHistory":[],"dev":{},"appDev":{}}],"offers":[],"activeExpeditions":[],"trainingAssignments":[],"reports":[],"recruits":[],"ledger":[{"day":1,"amount":3500,"category":"starting_cash","description":"Founding capital"}],"notifications":[]};
+const SKILLS=["Melee Combat","Ranged Combat","Navigation","Tracking","Stealth","Survival","Leadership","Strategy","Tactics","Instruction","Logistics","Persuasion","Negotiation","Intimidation","Deception","Medicine","Animal Handling","Vehicle Handling","Crafting","Engineering","Administration","General Knowledge"];
+const OPS=["Assault","Defense","Strike","Raid","Extraction","Interdiction","Reconnaissance"];
+const OP_OBJECTIVES={
+ Assault:["Reach/Access","Secure/Control","Eliminate/Neutralize"],
+ Defense:["Defend/Hold","Secure/Control","Eliminate/Neutralize"],
+ Strike:["Locate/Identify","Eliminate/Neutralize","Destroy/Disable"],
+ Raid:["Reach/Access","Acquire/Seize","Destroy/Disable"],
+ Extraction:["Recover/Extract","Escort/Deliver","Reach/Access"],
+ Interdiction:["Locate/Identify","Eliminate/Neutralize","Destroy/Disable"],
+ Reconnaissance:["Gather Intelligence","Locate/Identify","Reach/Access"]
+};
+const PROFILES={
+ Assault:[["Reconnaissance","Assault"],["Interdiction","Assault"],["Reconnaissance","Interdiction","Assault"]],
+ Defense:[["Reconnaissance","Defense"],["Interdiction","Defense"],["Reconnaissance","Defense","Strike"]],
+ Strike:[["Reconnaissance","Strike"],["Interdiction","Strike"],["Reconnaissance","Raid","Strike"]],
+ Raid:[["Reconnaissance","Raid"],["Interdiction","Raid"],["Reconnaissance","Raid","Extraction"]],
+ Extraction:[["Reconnaissance","Extraction"],["Raid","Extraction"],["Reconnaissance","Raid","Extraction"]],
+ Interdiction:[["Reconnaissance","Interdiction"],["Raid","Interdiction"],["Reconnaissance","Interdiction","Defense"]],
+ Reconnaissance:[["Raid","Reconnaissance"],["Interdiction","Reconnaissance"],["Raid","Reconnaissance","Extraction"]]
+};
+const TITLES={
+ Assault:["Seize the Ashen Tollgate","Storm the Broken Watch","Clear Redstone Hall"],
+ Defense:["Rearguard at West Ford","Hold the Salt Road Depot","Defend Greybank Crossing"],
+ Strike:["Break the Black Pike Cell","Silence the Sapper Crew","Cut Down the Red Banner Chief"],
+ Raid:["Raid the Fen Stores","Take the Iron Cart Cache","Strip the Rebel Magazine"],
+ Extraction:["Recover the Survey Party","Free the Captured Factor","Extract the Wounded Envoy"],
+ Interdiction:["Stop the Relief Column","Block the Arms Convoy","Break the Sapper Train"],
+ Reconnaissance:["Map the Greywood Pass","Probe the Old Quarry","Scout the Burned March"]
+};
+const APP={
+ "Reach/Access":[
+  A("covert_entry","covert","Stealth",5.5,4,"low","low",0),
+  Aapp("security_bypass","technical","Engineering","Security Systems","High",5.8,3,"moderate","low",5),
+  A("force_entry","force","Melee Combat",5.5,2,"high","high",0,["alarm"]),
+  A("alternate_route","movement","Navigation",5.3,10,"low","moderate",0),
+  A("negotiate_access","negotiation","Negotiation",5.4,5,"low","low",5)
+ ],
+ "Locate/Identify":[
+  A("track_target","tracking","Tracking",5.2,10,"low","low",0),
+  Apt("area_recon","observational","Awareness",5.5,10,"low","low",0),
+  A("ask_contacts","social","Persuasion",5.2,5,"moderate","low",10),
+  A("deceptive_inquiry","deception","Deception",5.4,4,"high","low",0),
+  A("research_context","knowledge","General Knowledge",5.1,7,"low","low",0)
+ ],
+ "Secure/Control":[
+  A("coordinated_seizure","command","Tactics",5.8,3,"high","moderate",0),
+  A("direct_control","force","Melee Combat",5.6,2,"high","high",0,["alarm"]),
+  A("ranged_overwatch","ranged","Ranged Combat",5.6,4,"high","moderate",0),
+  A("intimidate_defenders","intimidation","Intimidation",5.5,3,"moderate","moderate",0),
+  Aapp("establish_charter_claim","administrative","Administration","Law","Moderate",5.8,6,"low","low",10)
+ ],
+ "Defend/Hold":[
+  A("organized_defense","command","Tactics",5.7,16,"high","moderate",0),
+  A("fortify_position","engineering","Engineering",5.8,14,"moderate","low",25),
+  A("close_defense","force","Melee Combat",5.6,12,"high","high",0),
+  A("ranged_screen","ranged","Ranged Combat",5.6,12,"high","moderate",0)
+ ],
+ "Eliminate/Neutralize":[
+  A("direct_engagement","force","Melee Combat",5.7,3,"high","high",0,["alarm"]),
+  A("ranged_engagement","ranged","Ranged Combat",5.6,4,"high","moderate",0),
+  A("planned_ambush","covert","Stealth",5.8,7,"moderate","moderate",0),
+  A("maneuver_and_harass","command","Tactics",5.7,6,"moderate","moderate",0)
+ ],
+ "Destroy/Disable":[
+  A("technical_sabotage","engineering","Engineering",5.8,6,"moderate","low",20),
+  Aapp("security_disable","technical","Engineering","Security Systems","High",5.8,4,"moderate","low",15),
+  A("destructive_force","force","Melee Combat",5.7,2,"high","high",0,["alarm"]),
+  A("ranged_destruction","ranged","Ranged Combat",5.7,4,"high","moderate",10),
+  Aapp("neutralize_alchemical_hazard","crafting","Crafting","Alchemy","High",5.9,7,"low","moderate",15)
+ ],
+ "Recover/Extract":[
+  Aapp("secure_and_release","technical","Engineering","Security Systems","High",5.5,4,"low","low",0),
+  A("concealed_extraction","survival","Survival",5.5,11,"low","low",0),
+  A("fast_extraction","movement","Navigation",5.5,6,"moderate","moderate",0),
+  A("forced_recovery","force","Melee Combat",5.8,2,"high","high",0,["alarm"]),
+  A("improvise_recovery_rig","crafting","Crafting",5.2,6,"low","low",10)
+ ],
+ "Escort/Deliver":[
+  A("safe_route","movement","Navigation",5.4,12,"low","low",0),
+  A("cross_country_route","survival","Survival",5.6,14,"low","moderate",0),
+  A("protected_movement","command","Tactics",5.6,10,"moderate","moderate",0),
+  A("logistical_push","logistics","Logistics",5.4,9,"moderate","low",15),
+  A("manage_draft_animals","animal_handling","Animal Handling",5.2,8,"low","low",0),
+  Aapp("drive_wagons","vehicle","Vehicle Handling","Wagons","Low",5.2,7,"moderate","low",0)
+ ],
+ "Acquire/Seize":[
+  A("covert_theft","covert","Stealth",5.5,4,"moderate","low",0),
+  Aapp("security_override","technical","Engineering","Security Systems","High",5.8,3,"moderate","low",10),
+  A("forced_seizure","force","Melee Combat",5.6,2,"high","high",0,["alarm"]),
+  A("deceptive_transfer","deception","Deception",5.5,4,"moderate","low",0),
+  Aapp("charter_seizure","administrative","Administration","Law","Moderate",5.8,6,"low","low",10)
+ ],
+ "Gather Intelligence":[
+  Apt("observe_and_map","observational","Awareness",5.4,10,"low","low",0),
+  A("track_patterns","tracking","Tracking",5.3,9,"low","low",0),
+  A("covert_scouting","covert","Stealth",5.4,6,"moderate","low",0),
+  A("question_locals","social","Persuasion",5.2,5,"moderate","low",10),
+  A("research_context","knowledge","General Knowledge",5.1,8,"low","low",0)
+ ]
+};
+function A(mechanism,family,skill,difficulty,time,detection,casualty,resource,effects=[]){return {mechanism,family,skill,difficulty,time,detection,casualty,resource,effects}}
+function Aapp(mechanism,family,skill,application,dependence,difficulty,time,detection,casualty,resource,effects=[]){return {mechanism,family,skill,application,dependence,difficulty,time,detection,casualty,resource,effects}}
+function Apt(mechanism,family,aptitude,difficulty,time,detection,casualty,resource,effects=[]){return {mechanism,family,resolutionMode:"aptitude",aptitude,difficulty,time,detection,casualty,resource,effects}}
+
+let game=deep(INITIAL_STATE);
+let currentTab="dashboard";
+let selectedJobId=null;
+let selectedParty=[];
+let selectedLeader="";
+let selectedPolicy="balanced";
+const modal=document.getElementById("modal");
+
+function deep(x){return JSON.parse(JSON.stringify(x))}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function hash32(str){let h=2166136261>>>0;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){let a=hash32(String(seed));return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
+function pick(r,arr){return arr[Math.floor(r()*arr.length)]}
+function money(n){return `${n<0?"−":""}${Math.abs(Math.round(n)).toLocaleString()} cr`}
+function merc(id){return game.roster.find(x=>x.id===id)}
+function available(m){return m.readiness!=="Not Deployable" && m.availableDay<=game.day && !m.assignment}
+function payrollTotal(){return game.roster.reduce((s,m)=>s+m.payroll,0)}
+function notify(msg,type=""){game.notifications.unshift({day:game.day,msg,type});game.notifications=game.notifications.slice(0,20)}
+function addLedger(amount,category,description){game.cash+=amount;game.ledger.push({day:game.day,amount,category,description})}
+function save(){try{localStorage.setItem("mercenaryCompanyPlayableBaseV01",JSON.stringify(game));notify("Game saved locally.","good")}catch(e){notify("Browser storage is unavailable for this file. Use Export save JSON instead.","warn")}render()}
+function load(){let raw=null;try{raw=localStorage.getItem("mercenaryCompanyPlayableBaseV01")}catch(e){notify("Browser storage is unavailable. Use Import save JSON instead.","warn");render();return}if(!raw){notify("No local save found.","warn");render();return}try{game=JSON.parse(raw);notify("Local save loaded.","good");selectedJobId=null;render()}catch(e){notify("Save could not be loaded.","bad");render()}}
+function resetGame(){if(!confirm("Start a new company? This replaces the current unsaved state."))return;game=deep(INITIAL_STATE);bootstrap();save();currentTab="dashboard";render()}
+function exportSave(){const blob=new Blob([JSON.stringify(game,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`MercenaryCompany_Day${game.day}.json`;a.click();URL.revokeObjectURL(a.href)}
+function importSave(file){const fr=new FileReader();fr.onload=()=>{try{game=JSON.parse(fr.result);notify("Save imported.","good");save();render()}catch(e){alert("Invalid save file.")}};fr.readAsText(file)}
+
+function applicationProfile(m,skill,application,dependence,difficulty){
+ const exp=(m.applications||{})[application]||"none";
+ let eff=m.skills[skill]||0, mod=0;
+ const penalties={Low:{Specialized:0,Familiar:0,Unfamiliar:.5,none:.75},Moderate:{Specialized:0,Familiar:0,Unfamiliar:1.5,none:2},High:{Specialized:0,Familiar:0,Unfamiliar:2.5,none:3.5}};
+ if(exp==="Specialized" && dependence==="Moderate")eff=Math.max(eff,6);
+ if(exp==="Specialized" && dependence==="High")eff=Math.max(eff,8);
+ mod=penalties[dependence][exp]??penalties[dependence].none;
+ return {effective:eff,difficulty:difficulty+mod,experience:exp,modifier:mod};
+}
+function cap(m,a){
+ if(a.resolutionMode==="aptitude")return {effective:m.aptitudes[a.aptitude]||0,difficulty:a.difficulty,kind:"aptitude",label:a.aptitude,experience:"none"};
+ if(a.application){const p=applicationProfile(m,a.skill,a.application,a.dependence,a.difficulty);return {...p,kind:"application",label:a.skill}}
+ return {effective:m.skills[a.skill]||0,difficulty:a.difficulty,kind:"skill",label:a.skill,experience:"none"};
+}
+function bestFor(partyIds,a){
+ return partyIds.map(id=>{const m=merc(id),p=cap(m,a);return {m,p,margin:p.effective-p.difficulty}}).sort((x,y)=>y.margin-x.margin||y.p.effective-x.p.effective||x.m.name.localeCompare(y.m.name))[0];
+}
+function credible(partyIds,a){return bestFor(partyIds,a).p.effective>=bestFor(partyIds,a).p.difficulty-2.25}
+function riskNum(x){return x==="high"?1:x==="moderate"?.45:0}
+function detNum(x){return x==="high"?.9:x==="moderate"?.4:0}
+function approachScore(party,a,policy){
+ const b=bestFor(party,a), w=policy==="cautious"?[.8,.7,.08]:policy==="aggressive"?[.08,.05,.38]:[.35,.3,.16];
+ return b.margin-w[0]*riskNum(a.casualty)-w[1]*detNum(a.detection)-w[2]*(a.time/24)-(a.resource||0)*.005;
+}
+function chooseApproach(party,ao,policy){
+ let rows=ao.approaches.map(a=>({a,b:bestFor(party,a),credible:credible(party,a),score:approachScore(party,a,policy)}));
+ let viable=rows.filter(x=>x.credible);if(!viable.length)viable=rows.map(x=>({...x,score:x.score-1.5}));
+ viable.sort((x,y)=>y.score-x.score||x.a.mechanism.localeCompare(y.a.mechanism));return viable[0];
+}
+function coverage(job,party){
+ const rows=job.objectives.filter(o=>!o.contingent).map(o=>{const methods=o.approaches.map(a=>{const b=bestFor(party,a);return {a,b,credible:b.p.effective>=b.p.difficulty-2.25}});return {o,methods,credible:methods.filter(x=>x.credible)}});
+ const gaps=rows.filter(x=>x.credible.length===0),narrow=rows.filter(x=>x.credible.length===1);
+ let band="Broad",summary=`All ${rows.length} known Action Objectives retain at least 2 credible methods.`;
+ if(gaps.length){band="Severe Gap";summary=`No credible method for ${gaps[0].o.operation} / ${gaps[0].o.primitive}.`}
+ else if(narrow.length){band="Narrow";const x=narrow[0].credible[0];summary=`${narrow[0].o.operation} / ${narrow[0].o.primitive} depends on ${x.b.m.name} via ${x.a.mechanism}.`}
+ return {band,summary,rows};
+}
+
+function makeJob(){
+ const id=`JOB-${++game.offerCounter}`;
+ const r=rng(`${game.jobSeed}|${id}|${game.day}`);
+ const primary=pick(r,OPS), seq=deep(pick(r,PROFILES[primary]));
+ const title=pick(r,TITLES[primary]);
+ const objectives=[];
+ seq.forEach((op,si)=>{
+  const pool=OP_OBJECTIVES[op], count=op===primary?2:1;
+  for(let i=0;i<count;i++){
+   const primitive=pool[(Math.floor(r()*pool.length)+i)%pool.length];
+   const all=deep(APP[primitive]||[]);
+   all.sort(()=>r()-.5);
+   const countA=Math.min(all.length,r()<.7?3:4);
+   objectives.push({id:`${id}-O${objectives.length+1}`,operation:op,primitive,approaches:all.slice(0,countA)});
+   if(primitive==="Escort/Deliver"){
+    const cr=r();
+    if(cr<.18)objectives.push(panickedAO(id,op,objectives.length+1));
+    else if(cr<.36)objectives.push(vehicleAO(id,op,objectives.length+1));
+   }
+   if(primitive==="Recover/Extract" && r()<.25)objectives.push(bulkyAO(id,op,objectives.length+1));
+  }
+ });
+ const reward=Math.round((820+r()*420)/10)*10;
+ const bonus=Math.round((80+r()*120)/10)*10;
+ const travel=54+Math.round(r()*36);
+ return {id,title,primaryOperation:primary,operations:seq,objectives,reward,bonus,travelHours:travel,recommendedParty:[4,5],createdDay:game.day,expiryDay:game.day+14};
+}
+function panickedAO(id,op,n){return {id:`${id}-SAO${n}`,operation:op,primitive:"Secure/Control",context:"Panicked draft animals",approaches:[
+ A("calm_and_reteam","animal_handling","Animal Handling",4.2,3,"low","low",0),
+ Aapp("control_wagon_and_team","vehicle","Vehicle Handling","Wagons","Low",5.8,2,"moderate","moderate",0),
+ A("unload_and_reorganize","logistics","Logistics",7.4,7,"low","low",15),
+ A("field_improvisation","survival","Survival",7,5,"moderate","moderate",0)]}}
+function vehicleAO(id,op,n){return {id:`${id}-SAO${n}`,operation:op,primitive:"Secure/Control",context:"Immediate wagon-control emergency",approaches:[
+ Aapp("recover_wagon_control","vehicle","Vehicle Handling","Wagons","Low",3.6,1.5,"moderate","moderate",0),
+ A("steady_panicked_team","animal_handling","Animal Handling",6.5,2.5,"moderate","moderate",0),
+ A("jettison_cargo","logistics","Logistics",7.5,2,"high","moderate",60),
+ A("force_emergency_stop","force","Melee Combat",8.5,1,"high","high",20)]}}
+function bulkyAO(id,op,n){return {id:`${id}-SAO${n}`,operation:op,primitive:"Recover/Extract",context:"Bulky recovery asset",approaches:[
+ A("improvise_recovery_rig","crafting","Crafting",4.9,6,"low","low",10),
+ A("engineer_reinforced_lift","engineering","Engineering",5.6,5,"moderate","low",15),
+ A("redistribute_and_carry","logistics","Logistics",5.7,9,"low","moderate",5),
+ A("forced_manual_recovery","force","Melee Combat",6.6,4,"high","high",0)]}}
+
+function generateOffers(){game.offers=game.offers.filter(o=>o.expiryDay>game.day);while(game.offers.length<4)game.offers.push(makeJob())}
+function generateRecruit(){
+ const id=`REC-${++game.recruitCounter}`,r=rng(`${game.jobSeed}|rec|${id}|${game.day}`);
+ const first=["Arlen","Bessa","Cal","Dara","Evin","Fara","Garr","Hesta","Jorin","Kara"],last=["Morn","Vey","Kell","Rusk","Tarn","Sable","Dorran","Quill","Hale","Fen"];
+ const name=`${pick(r,first)} ${pick(r,last)}`,skills={};SKILLS.forEach(s=>skills[s]=2+Math.floor(r()*3));
+ const archetypes=[
+  ["Melee Combat","Tactics","Endurance"],["Tracking","Navigation","Ranged Combat"],["Medicine","Administration","Persuasion"],
+  ["Engineering","Crafting","General Knowledge"],["Negotiation","Persuasion","Administration"],["Animal Handling","Vehicle Handling","Logistics"]
+ ];
+ const fav=pick(r,archetypes);fav.slice(0,2).forEach(s=>skills[s]=5+Math.floor(r()*3));
+ const apt={Intelligence:4+Math.floor(r()*4),Awareness:4+Math.floor(r()*4),Focus:4+Math.floor(r()*4),Resilience:4+Math.floor(r()*4),Strength:4+Math.floor(r()*4),Endurance:4+Math.floor(r()*4),Mobility:4+Math.floor(r()*4),Speed:4+Math.floor(r()*4)};
+ return {id,name,careerStage:"Emerging",skills,aptitudes:apt,applications:{},payroll:50+Math.floor(r()*4)*10,hireCost:90+Math.floor(r()*7)*10,readiness:"Ready",availableDay:game.day,assignment:null,injuries:[],careerHistory:[],dev:{},appDev:{}};
+}
+function refreshRecruits(){while(game.recruits.length<3)game.recruits.push(generateRecruit())}
+
+function bootstrap(){generateOffers();refreshRecruits()}
+function bestStrategist(){
+ const xs=game.roster.filter(available).sort((a,b)=>(b.skills.Strategy||0)-(a.skills.Strategy||0)||a.name.localeCompare(b.name));return xs[0]&&xs[0].skills.Strategy>=3?xs[0]:null
+}
+function strategistAdvice(job){
+ const s=bestStrategist();if(!s)return {actor:null,text:"No credible strategist is available at base."};
+ const complexity=job.operations.length+(job.objectives.some(o=>o.context)?1:0);
+ const text=complexity>=4?"Expect chained operations and consequence pressure; preserve a flexible reserve.":job.objectives.some(o=>o.context)?"Target-state friction may make specialist methods materially safer than brute force.":"The contract is comparatively straightforward; depth matters more than exotic specialization.";
+ return {actor:s,text};
+}
+function recordEvidence(m,skill,diff,result,jobId,application=null){
+ if(!skill)return null;
+ const score=m.skills[skill]||0, kind=(score<diff?"Stretch":(score>=diff+2 && ["strong","solid"].includes(result)?"Consolidation":"Practice"));
+ const d=m.dev[skill]||{events:0,stretch:0,jobs:[],kindCounts:{}};d.events++;if(kind==="Stretch")d.stretch++;if(!d.jobs.includes(jobId))d.jobs.push(jobId);d.kindCounts[kind]=(d.kindCounts[kind]||0)+1;m.dev[skill]=d;
+ let improved=false;const gates={Emerging:[3,2,1],Developing:[4,2,2],Established:[5,2,2],Veteran:[6,2,3]},g=gates[m.careerStage]||gates.Developing;
+ if(d.events>=g[0]&&d.stretch>=g[1]&&d.jobs.length>=g[2]&&(m.skills[skill]||0)<10){m.skills[skill]++;m.dev[skill]={events:0,stretch:0,jobs:[],kindCounts:{}};improved=true}
+ if(application){
+  if(!m.applications[application])m.applications[application]="Unfamiliar";
+  const ad=m.appDev[application]||{events:0,stretch:0,jobs:[]};ad.events++;if(kind==="Stretch")ad.stretch++;if(!ad.jobs.includes(jobId))ad.jobs.push(jobId);m.appDev[application]=ad;
+  if(m.applications[application]==="Unfamiliar"&&ad.events>=3&&ad.jobs.length>=2){m.applications[application]="Familiar";m.appDev[application]={events:0,stretch:0,jobs:[]}}
+  else if(m.applications[application]==="Familiar"&&ad.events>=6&&ad.jobs.length>=3&&ad.stretch>=2){m.applications[application]="Specialized";m.appDev[application]={events:0,stretch:0,jobs:[]}}
+ }
+ return {kind,improved};
+}
+function resolveJob(job,partyIds,leaderId,policy,seed){
+ const r=rng(seed),events=[],injuries=[];let hours=8+job.travelHours+10;
+ let points=0,alarm=false;
+ job.objectives.forEach((ao,i)=>{
+  const c=chooseApproach(partyIds,ao,policy),a=c.a,b=c.b,p=b.p;
+  const margin=p.effective+(r()*2-1)-p.difficulty;const result=margin>=2?"strong":margin>=0?"solid":margin>=-2?"mixed":"poor";
+  points+=result==="strong"?2:result==="solid"?1:result==="mixed"?0:-2;hours+=a.time+(i?2:0);
+  if((a.effects||[]).includes("alarm")||result==="poor")alarm=true;
+  const ev={operation:ao.operation,primitive:ao.primitive,context:ao.context||null,approach:a.mechanism,actorId:b.m.id,actorName:b.m.name,result,margin:+margin.toFixed(2),skill:a.skill||null,aptitude:a.aptitude||null,application:a.application||null,dependence:a.dependence||null,difficulty:p.difficulty,effective:p.effective,casualty:a.casualty,detection:a.detection};
+  events.push(ev);
+  const injBase=a.casualty==="high"?.12:a.casualty==="moderate"?.05:.01, injMod=result==="poor"?.16:result==="mixed"?.06:0;
+  if(r()<injBase+injMod){const sev=r()<.22?"moderate":"minor";injuries.push({actorId:b.m.id,severity:sev,recoveryDays:sev==="moderate"?10:5,eventIndex:i})}
+ });
+ hours+=8+job.travelHours;if(r()<.3)hours+=6+Math.floor(r()*13);
+ const duration=Math.max(7,Math.ceil(hours/24));
+ const outcome=points>=Math.max(1,job.objectives.length*.35)?"success":points>=-1?"withdrawal":"failure";
+ const reward=outcome==="success"?job.reward:0, bonus=outcome==="success"&&injuries.length===0&&events.every(e=>e.result!=="poor")?job.bonus:0;
+ return {events,injuries,duration,outcome,reward,bonus,points,alarm};
+}
+function commitSelected(){
+ const job=game.offers.find(o=>o.id===selectedJobId);if(!job)return;
+ if(selectedParty.length<1||!selectedLeader){notify("Select a party and Leader.","bad");render();return}
+ if(!selectedParty.includes(selectedLeader)){notify("Leader must be in the selected party.","bad");render();return}
+ if(selectedParty.some(id=>!available(merc(id)))){notify("Party includes an unavailable mercenary.","bad");render();return}
+ const seed=`${job.id}|${game.day}|${selectedParty.join(",")}|${selectedPolicy}`,resolution=resolveJob(job,selectedParty,selectedLeader,selectedPolicy,seed);
+ const ret=game.day+resolution.duration;
+ selectedParty.forEach(id=>{const m=merc(id);m.assignment=job.id;m.availableDay=ret});
+ const advice=strategistAdvice(job);if(advice.actor){recordEvidence(advice.actor,"Strategy",5,"solid",job.id);advice.actor.careerHistory.push({day:game.day,type:"strategy_advice",jobId:job.id,skill:"Strategy"})}
+ game.activeExpeditions.push({id:`EXP-${job.id}`,job,partyIds:deep(selectedParty),leaderId:selectedLeader,policy:selectedPolicy,departDay:game.day,returnDay:ret,resolution});
+ game.offers=game.offers.filter(o=>o.id!==job.id);generateOffers();
+ notify(`${job.title} departed. Expected return Day ${ret}.`,"good");selectedJobId=null;selectedParty=[];selectedLeader="";saveSilently();currentTab="dashboard";render();
+}
+function completeExpedition(exp){
+ const res=exp.resolution,job=exp.job;
+ exp.partyIds.forEach(id=>{const m=merc(id);m.assignment=null;m.availableDay=Math.max(game.day,m.availableDay)});
+ // Leader evidence
+ const leader=merc(exp.leaderId);recordEvidence(leader,"Leadership",5,"solid",job.id);leader.careerHistory.push({day:game.day,type:"leadership",jobId:job.id,skill:"Leadership"});
+ const devNotes=[];
+ res.events.forEach(ev=>{
+  const m=merc(ev.actorId);
+  if(ev.skill){const d=recordEvidence(m,ev.skill,ev.difficulty,ev.result,job.id,ev.application);m.careerHistory.push({day:game.day,type:"job_activity",jobId:job.id,skill:ev.skill,application:ev.application,result:ev.result,approach:ev.approach});if(d?.improved)devNotes.push(`${m.name}: ${ev.skill} improved to ${m.skills[ev.skill]}.`)}
+  else m.careerHistory.push({day:game.day,type:"activity_only",jobId:job.id,aptitude:ev.aptitude,result:ev.result,approach:ev.approach});
+ });
+ res.injuries.forEach(inj=>{const m=merc(inj.actorId),until=game.day+inj.recoveryDays;m.injuries.push({severity:inj.severity,until});m.readiness=inj.severity==="moderate"?"Limited Duty":"Deployable With Limitation";m.availableDay=Math.max(m.availableDay,until);m.careerHistory.push({day:game.day,type:"injury",jobId:job.id,severity:inj.severity,until})});
+ addLedger(res.reward+res.bonus,"contract_income",`${job.title} settlement`);
+ const report={id:`R-${job.id}`,day:game.day,title:job.title,outcome:res.outcome,reward:res.reward,bonus:res.bonus,party:exp.partyIds.map(id=>merc(id).name),leader:leader.name,events:res.events,injuries:res.injuries.map(x=>({...x,actorName:merc(x.actorId).name})),devNotes};
+ game.reports.unshift(report);notify(`${job.title}: ${res.outcome.toUpperCase()} · ${money(res.reward+res.bonus)}`,res.outcome==="success"?"good":"warn")
+}
+function finishTraining(t){
+ const tr=merc(t.trainerId),te=merc(t.traineeId);tr.assignment=null;te.assignment=null;tr.availableDay=game.day;te.availableDay=game.day;
+ const d=recordEvidence(tr,"Instruction",4,"solid",t.id);recordEvidence(te,t.skill,(te.skills[t.skill]||0)+1,"solid",t.id);
+ tr.careerHistory.push({day:game.day,type:"training_instruction",trainee:te.name,skill:"Instruction"});te.careerHistory.push({day:game.day,type:"training_practice",trainer:tr.name,skill:t.skill});
+ notify(`Training completed: ${tr.name} trained ${te.name} in ${t.skill}.`,"good")
+}
+function processDayEvents(){
+ game.roster.forEach(m=>{m.injuries=m.injuries.filter(i=>i.until>game.day);if(!m.injuries.length&&m.readiness!=="Not Deployable")m.readiness="Ready";else if(m.injuries.length)m.readiness=m.injuries.some(i=>i.severity==="moderate")?"Limited Duty":"Deployable With Limitation"});
+ const due=game.activeExpeditions.filter(e=>e.returnDay<=game.day);due.forEach(completeExpedition);game.activeExpeditions=game.activeExpeditions.filter(e=>e.returnDay>game.day);
+ const tdue=game.trainingAssignments.filter(t=>t.returnDay<=game.day);tdue.forEach(finishTraining);game.trainingAssignments=game.trainingAssignments.filter(t=>t.returnDay>game.day);
+ while(game.nextPayrollDay<=game.day){const p=payrollTotal();addLedger(-p,"payroll",`Day-${game.nextPayrollDay} payroll`);notify(`Payroll paid: ${money(-p)}.` ,game.cash<0?"bad":"");game.nextPayrollDay+=game.payrollCycle}
+ if(game.nextOfferDay<=game.day){game.nextOfferDay=game.day+7;generateOffers();notify("New contracts posted.")}
+ if(game.nextRecruitDay<=game.day){game.nextRecruitDay=game.day+20;game.recruits=[];refreshRecruits();notify("New recruits are available.")}
+}
+function advance(){
+ const future=[game.nextPayrollDay,game.nextOfferDay,game.nextRecruitDay,...game.activeExpeditions.map(e=>e.returnDay),...game.trainingAssignments.map(t=>t.returnDay)].filter(x=>x>game.day);
+ const next=future.length?Math.min(...future):game.day+1;game.day=next;processDayEvents();saveSilently();render();
+}
+function startTraining(){
+ const tr=document.getElementById("trainerSel")?.value,te=document.getElementById("traineeSel")?.value,sk=document.getElementById("trainSkill")?.value;
+ if(!tr||!te||tr===te||!sk){notify("Choose different trainer and trainee plus a Skill.","bad");render();return}
+ if(!available(merc(tr))||!available(merc(te))){notify("Trainer and trainee must both be available.","bad");render();return}
+ const ret=game.day+3,id=`TR-${game.day}-${tr}-${te}`;merc(tr).assignment=id;merc(te).assignment=id;merc(tr).availableDay=ret;merc(te).availableDay=ret;game.trainingAssignments.push({id,trainerId:tr,traineeId:te,skill:sk,returnDay:ret});notify(`Training started; completes Day ${ret}.`,"good");saveSilently();render()
+}
+function hire(id){const c=game.recruits.find(x=>x.id===id);if(!c)return;if(game.cash<c.hireCost){notify("Not enough cash to hire this recruit.","bad");render();return}addLedger(-c.hireCost,"recruitment",`Hired ${c.name}`);const m=deep(c);delete m.hireCost;game.roster.push(m);game.recruits=game.recruits.filter(x=>x.id!==id);refreshRecruits();notify(`${c.name} joined the company.`,"good");saveSilently();render()}
+function saveSilently(){try{localStorage.setItem("mercenaryCompanyPlayableBaseV01",JSON.stringify(game))}catch(e){/* JSON export/import remains available as offline fallback */}}
+
+function nav(){
+ const tabs=[["dashboard","Company"],["jobs","Job Board"],["roster","Roster"],["recruits","Recruitment"],["reports","Reports"],["system","Save / System"]];
+ document.getElementById("nav").innerHTML=tabs.map(([id,n])=>`<button class="${currentTab===id?"active":""}" onclick="go('${id}')">${n}</button>`).join("");
+}
+function go(t){currentTab=t;render()}
+function topMeta(){document.getElementById("topMeta").innerHTML=`<span class="badge">Day ${game.day}</span><span class="badge">${money(game.cash)}</span><span class="badge">Payroll ${money(payrollTotal())} · D${game.nextPayrollDay}</span>`}
+function render(){nav();topMeta();document.getElementById("advanceBtn").onclick=advance;document.getElementById("saveBtn").onclick=save;const v=document.getElementById("view");v.innerHTML=currentTab==="dashboard"?dashboard():currentTab==="jobs"?jobsView():currentTab==="roster"?rosterView():currentTab==="recruits"?recruitView():currentTab==="reports"?reportsView():systemView()}
+function dashboard(){
+ const avail=game.roster.filter(available).length,limited=game.roster.filter(m=>m.readiness!=="Ready").length;
+ return `<div class="grid grid2">
+  <div class="card"><div class="label">Cash</div><div class="stat">${money(game.cash)}</div><div class="small muted">Next payroll Day ${game.nextPayrollDay}: ${money(payrollTotal())}</div></div>
+  <div class="card"><div class="label">Roster</div><div class="stat">${avail}/${game.roster.length} available</div><div class="small muted">${limited} with readiness limitations</div></div>
+ </div>
+ <h3>Active work</h3>${activeWork()}
+ <div class="grid grid2"><div><h3>Recent notices</h3><div class="stack">${game.notifications.slice(0,8).map(n=>`<div class="notice ${n.type}"><span class="small muted">Day ${n.day}</span><br>${esc(n.msg)}</div>`).join("")||`<div class="card muted">No notices yet.</div>`}</div></div>
+ <div><h3>Training</h3>${trainingPanel()}</div></div>`;
+}
+function activeWork(){
+ const items=[
+  ...game.activeExpeditions.map(e=>`<div class="card job"><div class="row"><b>${esc(e.job.title)}</b><span class="pill">returns D${e.returnDay}</span></div><div class="small muted">${e.job.primaryOperation} · ${e.partyIds.map(id=>merc(id).name).join(", ")}</div></div>`),
+  ...game.trainingAssignments.map(t=>`<div class="card"><div class="row"><b>Training: ${esc(t.skill)}</b><span class="pill">ends D${t.returnDay}</span></div><div class="small muted">${merc(t.trainerId).name} → ${merc(t.traineeId).name}</div></div>`)
+ ];return items.join("")||`<div class="card muted">No active expeditions or training.</div>`;
+}
+function trainingPanel(){
+ const av=game.roster.filter(available);return `<div class="card stack"><div class="small muted">A 3-day assignment. The trainer exercises Instruction; the trainee receives Practice evidence in the chosen Skill. No automatic Skill increase.</div>
+ <select id="trainerSel"><option value="">Trainer</option>${av.map(m=>`<option value="${m.id}">${esc(m.name)} · Instruction ${m.skills.Instruction}</option>`).join("")}</select>
+ <select id="traineeSel"><option value="">Trainee</option>${av.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select>
+ <select id="trainSkill">${SKILLS.filter(s=>s!=="Instruction").map(s=>`<option>${s}</option>`).join("")}</select>
+ <button class="btn" onclick="startTraining()">Start training</button></div>`;
+}
+function jobsView(){
+ return `<div class="desktop2"><div><div class="row"><div><h2 style="margin:0">Job Board</h2><div class="small muted">Offers expire after 14 days. Commit multiple expeditions if the roster can support them.</div></div></div>
+ <div class="stack" style="margin-top:10px">${game.offers.map(jobCard).join("")}</div></div><div>${selectedJobId?assemblePanel():`<div class="card muted">Select a Job to assemble an expedition.</div>`}</div></div>`;
+}
+function jobCard(j){
+ return `<div class="card job ${selectedJobId===j.id?"selected":""}"><div class="row"><div><b>${esc(j.title)}</b><div class="small muted">${j.primaryOperation} · ${j.operations.join(" → ")}</div></div><div style="text-align:right"><b>${money(j.reward)}</b><div class="tiny muted">+${money(j.bonus)} clean bonus</div></div></div>
+ <div class="pills"><span class="pill">${j.objectives.length} objectives</span><span class="pill">party ${j.recommendedParty.join("–")}</span><span class="pill">expires D${j.expiryDay}</span>${j.objectives.some(o=>o.context)?`<span class="pill">context pressure</span>`:""}</div>
+ <button class="btn" style="margin-top:8px" onclick="selectJob('${j.id}')">Assemble expedition</button></div>`;
+}
+function selectJob(id){selectedJobId=id;selectedParty=[];selectedLeader="";const av=game.roster.filter(available).sort((a,b)=>(b.skills.Leadership||0)-(a.skills.Leadership||0));if(av.length){const job=game.offers.find(x=>x.id===id);selectedParty=autoParty(job,av,Math.min(4,av.length));selectedLeader=selectedParty.slice().sort((a,b)=>(merc(b).skills.Leadership||0)-(merc(a).skills.Leadership||0))[0]||""}render()}
+function autoParty(job,av,n){
+ const wanted=new Set();job.objectives.forEach(o=>o.approaches.forEach(a=>a.skill&&wanted.add(a.skill)));const leader=av.slice().sort((a,b)=>b.skills.Leadership-a.skills.Leadership)[0],sel=[leader.id],rem=av.filter(x=>x.id!==leader.id);
+ while(sel.length<n&&rem.length){rem.sort((a,b)=>{const sc=x=>[...wanted].reduce((s,k)=>s+(x.skills[k]||0),0);return sc(b)-sc(a)});sel.push(rem.shift().id)}return sel
+}
+function toggleParty(id,on){if(on){if(!selectedParty.includes(id))selectedParty.push(id)}else{selectedParty=selectedParty.filter(x=>x!==id);if(selectedLeader===id)selectedLeader=""}render()}
+function assemblePanel(){
+ const j=game.offers.find(x=>x.id===selectedJobId);if(!j)return "";
+ const av=game.roster.filter(available),cov=selectedParty.length?coverage(j,selectedParty):null,advice=strategistAdvice(j);
+ return `<div class="card"><h3>${esc(j.title)}</h3><div class="small muted">Recommended party ${j.recommendedParty.join("–")} · Leader required</div><div class="divider"></div>
+ <div class="stack">${av.map(m=>`<label class="member"><input type="checkbox" ${selectedParty.includes(m.id)?"checked":""} onchange="toggleParty('${m.id}',this.checked)"><span><b>${esc(m.name)}</b><div class="tiny muted">${m.careerStage} · Lead ${m.skills.Leadership} · ${topSkills(m,3)}</div></span></label>`).join("")}</div>
+ <div class="divider"></div><label class="small muted">Leader</label><select style="width:100%" onchange="selectedLeader=this.value;render()"><option value="">— choose —</option>${selectedParty.map(id=>`<option value="${id}" ${selectedLeader===id?"selected":""}>${merc(id).name} · Leadership ${merc(id).skills.Leadership}</option>`).join("")}</select>
+ <label class="small muted" style="display:block;margin-top:8px">Risk policy</label><select style="width:100%" onchange="selectedPolicy=this.value;render()">${["cautious","balanced","aggressive"].map(x=>`<option ${selectedPolicy===x?"selected":""}>${x}</option>`).join("")}</select>
+ <div class="divider"></div><div class="notice"><b>Strategist advisory</b><br><span class="small">${advice.actor?`${advice.actor.name}: `:""}${advice.text}</span></div>
+ ${cov?coverageHtml(cov):""}
+ <button class="btn primary" style="width:100%;margin-top:10px" ${!selectedLeader||!selectedParty.length?"disabled":""} onclick="commitSelected()">Commit expedition</button></div>`;
+}
+function coverageHtml(c){
+ const cls=c.band==="Broad"?"good":c.band==="Narrow"?"warn":"bad";
+ return `<div class="coverage notice ${cls}" style="margin-top:10px"><div class="row"><b>Approach Coverage: ${c.band}</b><span class="pill">Advisory</span></div><div class="small">${esc(c.summary)}</div>${c.rows.map(r=>`<div class="ao"><b class="small">${r.o.operation} · ${r.o.primitive}${r.o.context?` · ${r.o.context}`:""}</b><div class="tiny muted">${r.credible.length} credible of ${r.methods.length} methods</div>${r.credible.slice(0,3).map(x=>`<div class="tiny">✓ ${x.a.mechanism} — ${x.b.m.name} · ${x.b.p.kind==="aptitude"?"Aptitude "+x.b.p.label:x.a.application?`${x.a.skill} + ${x.a.application}`:x.a.skill}</div>`).join("")}</div>`).join("")}</div>`;
+}
+function rosterView(){
+ return `<h2>Roster</h2><div class="grid grid2">${game.roster.map(m=>`<div class="card"><div class="row"><div><b>${esc(m.name)}</b><div class="small muted">${m.careerStage}</div></div><span class="pill">${esc(m.assignment?`Assigned until D${m.availableDay}`:m.readiness)}</span></div><div class="small">${topSkills(m,5)}</div><div class="pills" style="margin-top:7px">${Object.entries(m.applications||{}).map(([k,v])=>`<span class="pill">${esc(k)}: ${esc(v)}</span>`).join("")||`<span class="tiny muted">No Applications yet</span>`}</div><button class="btn" style="margin-top:8px" onclick="showMerc('${m.id}')">Details</button></div>`).join("")}</div>`;
+}
+function topSkills(m,n){return Object.entries(m.skills).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,n).map(x=>`${x[0]} ${x[1]}`).join(" · ")}
+function showMerc(id){
+ const m=merc(id);document.getElementById("modalTitle").textContent=m.name;document.getElementById("modalBody").innerHTML=`<div class="row"><div><b>${m.careerStage}</b><div class="small muted">${m.readiness} · payroll ${money(m.payroll)}</div></div><div>${m.assignment?`Assigned until D${m.availableDay}`:"Available"}</div></div>
+ <h4>Aptitudes</h4><div class="skillgrid">${Object.entries(m.aptitudes).map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("")}</div>
+ <h4>Learned Skills</h4><div class="skillgrid">${Object.entries(m.skills).map(([k,v])=>`<div>${k}<div class="bar"><span style="width:${v*10}%"></span></div></div><div>${v}</div>`).join("")}</div>
+ <h4>Applications</h4><div class="pills">${Object.entries(m.applications||{}).map(([k,v])=>`<span class="pill">${k}: ${v}</span>`).join("")||"None"}</div>
+ <h4>Recent Career History</h4>${m.careerHistory.slice(-10).reverse().map(h=>`<div class="small report-event">Day ${h.day} · ${esc(h.type)} ${h.skill?`· ${esc(h.skill)}`:""} ${h.result?`· ${esc(h.result)}`:""}</div>`).join("")||`<div class="muted small">No events yet.</div>`}`;modal.showModal()
+}
+function recruitView(){return `<div class="row"><div><h2 style="margin:0">Recruitment</h2><div class="small muted">Pool refreshes Day ${game.nextRecruitDay}. Hiring increases payroll immediately.</div></div></div><div class="grid grid2" style="margin-top:10px">${game.recruits.map(c=>`<div class="card"><div class="row"><div><b>${esc(c.name)}</b><div class="small muted">${c.careerStage}</div></div><div style="text-align:right"><b>${money(c.hireCost)}</b><div class="tiny muted">${money(c.payroll)}/payroll</div></div></div><div class="small">${topSkills(c,5)}</div><button class="btn" style="margin-top:8px" onclick="hire('${c.id}')">Hire</button></div>`).join("")}</div>`}
+function reportsView(){return `<h2>Post-Job Reports</h2><div class="stack">${game.reports.map((r,i)=>`<div class="card ${r.outcome==="success"?"goodline":"warnline"}"><div class="row"><div><b>${esc(r.title)}</b><div class="small muted">Day ${r.day} · ${r.outcome.toUpperCase()}</div></div><b>${money(r.reward+r.bonus)}</b></div><div class="small">${r.party.join(", ")}</div><button class="btn" style="margin-top:7px" onclick="showReport(${i})">Open report</button></div>`).join("")||`<div class="card muted">No completed Jobs yet.</div>`}</div>`}
+function showReport(i){
+ const r=game.reports[i];document.getElementById("modalTitle").textContent=r.title;document.getElementById("modalBody").innerHTML=`<div class="row"><b>${r.outcome.toUpperCase()}</b><b>${money(r.reward+r.bonus)}</b></div><div class="small muted">Leader ${r.leader} · ${r.party.join(", ")}</div><h4>Operational events</h4>${r.events.map(e=>`<div class="report-event"><b>${e.operation} · ${e.primitive}</b>${e.context?`<div class="tiny muted">${e.context}</div>`:""}<div>${e.actorName} used <b>${e.approach}</b> — ${e.result.toUpperCase()}</div><div class="tiny muted">${e.skill?e.application?`${e.skill} + ${e.application}`:e.skill:`Aptitude ${e.aptitude}`} · margin ${e.margin}</div></div>`).join("")}<h4>Injuries</h4>${r.injuries.map(x=>`<div>${x.actorName}: ${x.severity}</div>`).join("")||`<div class="small muted">None</div>`}<h4>Development</h4>${r.devNotes.map(x=>`<div>${x}</div>`).join("")||`<div class="small muted">Evidence recorded; no Skill realization this Job.</div>`}`;modal.showModal()
+}
+function systemView(){return `<div class="grid grid2"><div class="card stack"><h3>Save / Load</h3><button class="btn primary" onclick="save()">Save to browser</button><button class="btn" onclick="load()">Load browser save</button><button class="btn" onclick="exportSave()">Export save JSON</button><button class="btn" onclick="document.getElementById('importFile').click()">Import save JSON</button><button class="btn bad" onclick="resetGame()">New company</button></div><div class="card"><h3>Build scope</h3><div class="small muted">Offline, deterministic, no network or LLM. Playable Base v0.1 includes persistent roster, procedural multi-operation Jobs, Approach Coverage, concurrent expeditions, calendar/payroll, post-Job reports, injuries/recovery, development evidence, Applications, training, recruitment, and local saves.</div><div class="divider"></div><div class="small">Calibration is intentionally provisional. This build is for loop/fun/usability testing, not economy or balance lock.</div></div></div><h3>Ledger</h3><div class="card">${game.ledger.slice().reverse().slice(0,30).map(x=>`<div class="row small"><span>Day ${x.day} · ${esc(x.description)}</span><b class="money ${x.amount>=0?"pos":"neg"}">${money(x.amount)}</b></div>`).join("")}</div>`}
+
+document.getElementById("importFile").addEventListener("change",e=>{if(e.target.files[0])importSave(e.target.files[0])});
+bootstrap();
+render();
+</script>
+</body>
+</html>

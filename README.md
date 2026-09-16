@@ -1,1 +1,1 @@
-https://todocaldo.github.io/Merc-Sim/
+https://todocaldo.github.io/Merc-Sim/index.html

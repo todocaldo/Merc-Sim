@@ -1604,7 +1604,7 @@ function actionSemantics(ev,ctx){
   if(ev.skill==="Deception")return `${ev.actorName} misled ${ix.counterparty} while seeking ${ix.desiredConcession}, allowing the expedition to pursue its aim without an open confrontation.`;
  }
  const tx=ev.technicalInteractionContext;if(tx){
-  if(ev.skill==="Security Systems")return `${ev.actorName} ${ao.primitive==="Acquire/Seize"?"took control of":ao.primitive==="Reach/Access"?"breached":ao.primitive==="Defend/Hold"?"reconfigured":"worked through"} ${tx.actionObject}${ao.primitive==="Acquire/Seize"?"":`, using Security Systems to ${tx.technicalGoal}`}.`;
+  if(ev.skill==="Security Systems")return `${ev.actorName} ${ev.primitive==="Acquire/Seize"?"took control of":ev.primitive==="Reach/Access"?"breached":ev.primitive==="Defend/Hold"?"reconfigured":"worked through"} ${tx.actionObject}${ev.primitive==="Acquire/Seize"?"":`, using Security Systems to ${tx.technicalGoal}`}.`;
   if(ev.skill==="Engineering")return `${ev.actorName} applied Engineering to ${tx.actionObject}, attempting to ${tx.technicalGoal} so the expedition could ${tx.operationalPurpose}.`;
   if(ev.skill==="Crafting")return `${ev.actorName} used Crafting to prepare ${tx.actionObject}, intending to ${tx.technicalGoal} so the expedition could ${tx.operationalPurpose}.`;
   if(ev.skill==="Logistics")return `${ev.actorName} reorganized ${tx.actionObject} through Logistics, aiming to ${tx.technicalGoal} so the expedition could ${tx.operationalPurpose}.`;
